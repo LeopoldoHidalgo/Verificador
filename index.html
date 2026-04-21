@@ -4,13 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checador Pro</title>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://unpkg.com" type="text/javascript"></script>
     <style>
         body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
         #reader { width: 100%; border-radius: 8px; background: #000; display: none; }
         
-        /* Estilo para que los datos resalten en el centro */
         .result-box { 
             margin-top: 15px; 
             padding: 25px; 
@@ -29,6 +28,9 @@
 
         button { background: #007bff; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1.1rem; }
         input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+
+        /* CAMBIO 1: Panel oculto desde el inicio */
+        #panelRegistro { display: none; }
     </style>
 </head>
 <body>
@@ -42,7 +44,7 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="panelRegistro">
         <h3>Registrar Producto</h3>
         <input type="text" id="newCode" placeholder="Código">
         <input type="text" id="newName" placeholder="Nombre del producto">
@@ -73,11 +75,10 @@
             const config = { fps: 10, qrbox: { width: 250, height: 150 } };
 
             scanner.start({ facingMode: "environment" }, config, (text) => {
-                // AL ENCONTRAR: Detenemos cámara y limpiamos
                 scanner.stop().then(() => {
                     scanner.clear();
                     readerDiv.style.display = 'none';
-                    btnStart.style.display = 'block'; // Reactivamos el botón
+                    btnStart.style.display = 'block'; 
                     btnStart.innerText = "Escanear otro producto";
                     mostrar(text);
                 });
@@ -91,15 +92,18 @@
 
         function mostrar(codigo) {
             const box = document.getElementById('result-box');
+            const panel = document.getElementById('panelRegistro');
             const p = productos[codigo];
             
             if (p) {
+                panel.style.display = 'none'; // Sigue oculto si existe
                 box.innerHTML = `
                     <div class="nombre-grande">${p.nombre}</div>
                     <div class="precio-grande">$${p.price}</div>
                     <small style="color:gray">Código: ${codigo}</small>
                 `;
             } else {
+                panel.style.display = 'block'; // Solo se muestra si NO existe
                 box.innerHTML = `
                     <div style="color:red; font-weight:bold;">No registrado</div>
                     <div style="margin:10px 0;">Código: ${codigo}</div>
@@ -125,6 +129,8 @@
                 document.getElementById('newCode').value = '';
                 document.getElementById('newName').value = '';
                 document.getElementById('newPrice').value = '';
+                document.getElementById('panelRegistro').style.display = 'none'; // Se oculta tras guardar
+                mostrar(c);
             }
         }
     </script>
