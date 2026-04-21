@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checador Pro</title>
-    <script src="https://unpkg.com" type="text/javascript"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
@@ -29,9 +29,6 @@
 
         button { background: #007bff; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1.1rem; }
         input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        
-        /* Oculto por defecto hasta que se necesite */
-        #formularioRegistro { display: none; margin-top: 15px; width: 100%; }
     </style>
 </head>
 <body>
@@ -40,19 +37,17 @@
         <h2>Verificador de Precios</h2>
         <button id="btnStart" onclick="encender()">Encender Cámara</button>
         <div id="reader"></div>
-        
         <div class="result-box" id="result-box">
-            <p id="mensajeEstado">Presiona el botón para escanear</p>
-            
-            <!-- El formulario ahora vive AQUÍ adentro -->
-            <div id="formularioRegistro">
-                <h3 style="color:red;">Producto no registrado</h3>
-                <input type="text" id="newCode" placeholder="Código" readonly>
-                <input type="text" id="newName" placeholder="Nombre del producto">
-                <input type="text" id="newPrice" placeholder="Precio (ej: 25.00)">
-                <button onclick="guardar()" style="background:#28a745; margin-top:10px;">Guardar y Mostrar</button>
-            </div>
+            <p>Presiona el botón para escanear</p>
         </div>
+    </div>
+
+    <div class="card">
+        <h3>Registrar Producto</h3>
+        <input type="text" id="newCode" placeholder="Código">
+        <input type="text" id="newName" placeholder="Nombre del producto">
+        <input type="text" id="newPrice" placeholder="Precio (ej: 25.00)">
+        <button onclick="guardar()" style="background:#28a745; margin-top:10px;">Guardar Producto</button>
     </div>
 
     <script>
@@ -68,22 +63,21 @@
             const btnStart = document.getElementById('btnStart');
             const readerDiv = document.getElementById('reader');
             const resultBox = document.getElementById('result-box');
-            const form = document.getElementById('formularioRegistro');
 
             btnStart.style.display = 'none';
             readerDiv.style.display = 'block';
-            form.style.display = 'none'; // Asegurar que esté oculto al buscar
-            resultBox.querySelector('p').innerHTML = "Buscando...";
+            resultBox.innerHTML = "Buscando...";
 
             scanner = new Html5Qrcode("reader");
             
             const config = { fps: 10, qrbox: { width: 250, height: 150 } };
 
             scanner.start({ facingMode: "environment" }, config, (text) => {
+                // AL ENCONTRAR: Detenemos cámara y limpiamos
                 scanner.stop().then(() => {
                     scanner.clear();
                     readerDiv.style.display = 'none';
-                    btnStart.style.display = 'block'; 
+                    btnStart.style.display = 'block'; // Reactivamos el botón
                     btnStart.innerText = "Escanear otro producto";
                     mostrar(text);
                 });
@@ -97,24 +91,26 @@
 
         function mostrar(codigo) {
             const box = document.getElementById('result-box');
-            const form = document.getElementById('formularioRegistro');
-            const mensaje = document.getElementById('mensajeEstado');
             const p = productos[codigo];
             
             if (p) {
-                form.style.display = 'none';
-                mensaje.style.display = 'none';
                 box.innerHTML = `
                     <div class="nombre-grande">${p.nombre}</div>
                     <div class="precio-grande">$${p.price}</div>
                     <small style="color:gray">Código: ${codigo}</small>
                 `;
             } else {
-                mensaje.style.display = 'none';
-                form.style.display = 'block'; // Mostrar formulario en el centro
-                document.getElementById('newCode').value = codigo;
-                document.getElementById('newName').focus();
+                box.innerHTML = `
+                    <div style="color:red; font-weight:bold;">No registrado</div>
+                    <div style="margin:10px 0;">Código: ${codigo}</div>
+                    <button onclick="formPre('${codigo}')" style="background:#6c757d; padding:8px; font-size:0.9rem;">Registrar ahora</button>
+                `;
             }
+        }
+
+        function formPre(c) {
+            document.getElementById('newCode').value = c;
+            document.getElementById('newName').focus();
         }
 
         function guardar() {
@@ -126,12 +122,9 @@
                 productos[c] = { nombre: n, price: p };
                 localStorage.setItem('misProductos', JSON.stringify(productos));
                 alert("¡Guardado!");
-                
-                // Limpiar y actualizar vista inmediatamente
-                document.getElementById('formularioRegistro').style.display = 'none';
-                mostrar(c);
-            } else {
-                alert("Por favor llena todos los campos");
+                document.getElementById('newCode').value = '';
+                document.getElementById('newName').value = '';
+                document.getElementById('newPrice').value = '';
             }
         }
     </script>
