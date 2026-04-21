@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checador Automático</title>
-    <!-- Cargamos la librería -->
-    <script src="https://unpkg.com" type="text/javascript"></script>
+    <title>Checador Automático Pro</title>
+    <!-- Librería desde servidor de alta velocidad -->
+    <script src="https://cloudflare.com"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; }
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
-        #reader { width: 100%; border-radius: 10px; overflow: hidden; background: #000; display: none; }
-        .result-box { margin-top: 10px; min-height: 100px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #fff; border-radius: 10px; }
-        .price { font-size: 3rem; color: #28a745; font-weight: bold; margin: 10px 0; }
-        .product-name { font-size: 1.5rem; color: #333; font-weight: bold; }
-        button { background: #007bff; color: white; border: none; padding: 15px; border-radius: 10px; cursor: pointer; width: 100%; font-size: 1rem; font-weight: bold; }
+        #reader { width: 100%; border-radius: 10px; overflow: hidden; background: #000; display: none; margin-bottom: 10px; }
+        .result-box { min-height: 120px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #fff; border-radius: 10px; border: 1px solid #eee; }
+        .price { font-size: 3rem; color: #28a745; font-weight: bold; margin: 5px 0; }
+        .product-name { font-size: 1.4rem; color: #333; font-weight: bold; }
+        button { background: #007bff; color: white; border: none; padding: 15px; border-radius: 10px; cursor: pointer; width: 100%; font-size: 1rem; font-weight: bold; transition: 0.3s; }
         button:disabled { background: #ccc; cursor: not-allowed; }
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
         .status-text { color: #666; font-size: 0.9rem; margin-top: 10px; }
@@ -23,13 +23,13 @@
 
     <div class="card">
         <h2>Checador de Precios</h2>
-        <!-- El botón inicia deshabilitado -->
-        <button id="btnStart" onclick="encender()" disabled>Cargando sistema...</button>
+        <!-- Botón que se activa solo cuando el sistema carga -->
+        <button id="btnStart" onclick="encender()" disabled>Conectando sistema...</button>
         
         <div id="reader"></div>
         
         <div class="result-box" id="result-box">
-            <p class="status-text">Esperando conexión...</p>
+            <p class="status-text">Cargando componentes...</p>
         </div>
     </div>
 
@@ -45,20 +45,22 @@
         let productos = JSON.parse(localStorage.getItem('misProductos')) || {};
         let scanner = null;
 
-        // ESTO ACTIVA EL BOTÓN CUANDO LA LIBRERÍA ESTÁ LISTA
-        window.onload = () => {
+        // Función que revisa si la librería ya cargó
+        function verificarLibreria() {
             const btn = document.getElementById('btnStart');
             const status = document.getElementById('result-box');
             
-            // Verificamos si la librería Html5Qrcode ya existe
             if (typeof Html5Qrcode !== "undefined") {
                 btn.disabled = false;
                 btn.innerText = "Encender Cámara";
-                status.innerHTML = '<p class="status-text">Sistema listo</p>';
+                status.innerHTML = '<p class="status-text">Sistema listo ✅</p>';
             } else {
-                status.innerHTML = '<p class="status-text" style="color:red">Error al cargar librería. Reintenta recargar la página.</p>';
+                // Reintenta cada segundo
+                setTimeout(verificarLibreria, 1000);
             }
-        };
+        }
+
+        window.onload = verificarLibreria;
 
         async function encender() {
             const btnStart = document.getElementById('btnStart');
@@ -71,10 +73,15 @@
 
             if (!scanner) scanner = new Html5Qrcode("reader");
 
-            const config = { fps: 10, qrbox: { width: 280, height: 150 } };
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 250, height: 150 },
+                aspectRatio: 1.0
+            };
 
             try {
                 await scanner.start({ facingMode: "environment" }, config, (decodedText) => {
+                    // Al detectar código, detiene cámara
                     scanner.stop().then(() => {
                         readerDiv.style.display = 'none';
                         mostrarProducto(decodedText);
@@ -82,7 +89,7 @@
                     if (navigator.vibrate) navigator.vibrate(100);
                 });
             } catch (err) {
-                resultBox.innerHTML = `<p style="color:red">Error: ${err}</p>`;
+                resultBox.innerHTML = `<p style="color:red">Error de cámara: ${err}</p>`;
                 btnStart.style.display = 'block';
             }
         }
@@ -95,18 +102,21 @@
                 box.innerHTML = `
                     <div class="product-name">${p.nombre}</div>
                     <div class="price">$${p.precio}</div>
-                    <div class="status-text">Reactivando cámara en 5s...</div>
+                    <div class="status-text">Siguiente escaneo en 5s...</div>
                 `;
             } else {
                 box.innerHTML = `
                     <div style="color:orange; font-weight:bold;">CÓDIGO: ${codigo}</div>
                     <p>No registrado</p>
-                    <button onclick="prellenar('${codigo}')" style="background:#6c757d; padding:8px; width:auto; margin-bottom:10px;">Registrar</button>
+                    <button onclick="prellenar('${codigo}')" style="background:#6c757d; padding:8px; width:auto; margin-bottom:10px;">Registrar ahora</button>
                     <div class="status-text">Reactivando cámara en 5s...</div>
                 `;
             }
 
-            setTimeout(() => { encender(); }, 5000);
+            // Temporizador de 5 segundos para reactivar
+            setTimeout(() => {
+                encender();
+            }, 5000);
         }
 
         function prellenar(c) {
@@ -126,6 +136,8 @@
                 document.getElementById('newCode').value = '';
                 document.getElementById('newName').value = '';
                 document.getElementById('newPrice').value = '';
+            } else {
+                alert("Por favor llena todos los campos.");
             }
         }
     </script>
