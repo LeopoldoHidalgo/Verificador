@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checador Pro</title>
-    <script src="https://unpkg.com" type="text/javascript"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
@@ -23,23 +23,9 @@
             justify-content: center;
             align-items: center;
         }
-
-        /* CAMBIO: Clase para ocupar el 70% de la pantalla */
-        .vista-70 {
-            position: fixed;
-            top: 15%;
-            left: 5%;
-            width: 90vw;
-            height: 70vh;
-            z-index: 1000;
-            box-shadow: 0 0 50px rgba(0,0,0,0.3);
-            border: none;
-            background: white;
-            border-radius: 20px;
-        }
         
-        .precio-grande { color: #28a745; font-size: 4rem; font-weight: bold; margin: 10px 0; }
-        .nombre-grande { font-size: 2rem; color: #333; font-weight: bold; }
+        .precio-grande { color: #28a745; font-size: 5rem; font-weight: bold; margin: 10px 0; }
+        .nombre-grande { font-size: 3rem; color: #333; font-weight: bold; }
 
         button { background: #007bff; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1.1rem; }
         input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
@@ -56,7 +42,8 @@
         </div>
     </div>
 
- 
+    
+
     <script>
         let productos = JSON.parse(localStorage.getItem('misProductos')) || {};
         let scanner = null;
@@ -71,7 +58,6 @@
             const readerDiv = document.getElementById('reader');
             const resultBox = document.getElementById('result-box');
 
-            resultBox.classList.remove('vista-70'); // Quitar el tamaño grande al iniciar búsqueda
             btnStart.style.display = 'none';
             readerDiv.style.display = 'block';
             resultBox.innerHTML = "Buscando...";
@@ -102,28 +88,24 @@
             const p = productos[codigo];
             
             if (p) {
-                box.classList.add('vista-70'); // CAMBIO: Aplicar el tamaño del 70%
                 box.innerHTML = `
                     <div class="nombre-grande">${p.nombre}</div>
                     <div class="precio-grande">$${p.price}</div>
-                    <button onclick="document.getElementById('result-box').classList.remove('vista-70');" style="width:auto; padding:10px 30px; background:#666;">Cerrar</button>
-                    <br><small style="color:gray">Código: ${codigo}</small>
+                    <small style="color:gray">Código: ${codigo}</small>
                 `;
             } else {
-                box.classList.remove('vista-70');
                 box.innerHTML = `
                     <div style="color:red; font-weight:bold;">No registrado</div>
                     <div style="margin:10px 0;">Código: ${codigo}</div>
                     <button onclick="formPre('${codigo}')" style="background:#6c757d; padding:8px; font-size:0.9rem;">Registrar ahora</button>
 
-    <div class="card">
+     <div class="card">
         <h3>Registrar Producto</h3>
         <input type="text" id="newCode" placeholder="Código">
         <input type="text" id="newName" placeholder="Nombre del producto">
         <input type="text" id="newPrice" placeholder="Precio (ej: 25.00)">
         <button onclick="guardar()" style="background:#28a745; margin-top:10px;">Guardar Producto</button>
     </div>
-
                 `;
             }
         }
@@ -142,8 +124,9 @@
                 productos[c] = { nombre: n, price: p };
                 localStorage.setItem('misProductos', JSON.stringify(productos));
                 alert("¡Guardado!");
-                // Mostrar el resultado después de guardar
-                mostrar(c);
+                document.getElementById('newCode').value = '';
+                document.getElementById('newName').value = '';
+                document.getElementById('newPrice').value = '';
             }
         }
     </script>
