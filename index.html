@@ -1,76 +1,51 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checador con Cámara</title>
-    <!-- Cargamos la librería del escáner -->
-    <script src="https://unpkg.com"></script>
-    <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 10px; }
-        .card { background: white; padding: 1.5rem; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
-        #reader { width: 100%; border-radius: 10px; overflow: hidden; background: #000; }
-        .result-box { margin-top: 15px; padding: 15px; background: #e9ecef; border-radius: 10px; min-height: 80px; }
-        .price { font-size: 2.2rem; color: #28a745; font-weight: bold; margin: 5px 0; }
-        .name { font-size: 1.2rem; color: #333; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; }
-    </style>
-</head>
-<body>
-
-    <div class="card">
-        <h2>Escáner de Precios</h2>
-        <!-- Aquí se mostrará la cámara -->
-        <div id="reader"></div>
-        
-        <div class="result-box" id="result-box">
-            <p>Apunta al código de barras...</p>
-        </div>
+<div class="card">
+    <h2>Escáner de Precios</h2>
+    <!-- Botón para forzar el encendido -->
+    <button id="startBtn" onclick="iniciarCamara()" style="background:#28a745; margin-bottom:10px;">Encender Cámara</button>
+    
+    <div id="reader" style="display:none;"></div>
+    
+    <div class="result-box" id="result-box">
+        <p>Presiona el botón para escanear</p>
     </div>
-
-    <!-- Sección para agregar productos (Misma lógica anterior) -->
-    <div class="card">
-        <h3>Registrar Producto</h3>
-        <input type="text" id="newCode" placeholder="Código" style="width:90%; padding:8px; margin:5px;">
-        <input type="text" id="newName" placeholder="Nombre" style="width:90%; padding:8px; margin:5px;">
-        <input type="text" id="newPrice" placeholder="Precio" style="width:90%; padding:8px; margin:5px;">
-        <button onclick="guardarProducto()">Guardar</button>
-    </div>
+</div>
 
 <script>
-    // Base de datos local
-    let productos = JSON.parse(localStorage.getItem('misProductos')) || {
-        "123": { nombre: "Producto de Prueba", precio: "10.00" }
-    };
-
-    // Configuración del escáner
+    let productos = JSON.parse(localStorage.getItem('misProductos')) || {};
     const html5QrCode = new Html5Qrcode("reader");
-    const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-        // Cuando detecta un código:
-        mostrarPrecio(decodedText);
-    };
-    
-    const config = { fps: 10, qrbox: { width: 250, height: 150 } };
 
-    // Iniciar cámara trasera
-    html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback);
+    async function iniciarCamara() {
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('reader').style.display = 'block';
+        document.getElementById('result-box').innerHTML = "<p>Cargando cámara...</p>";
+
+        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+
+        try {
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                (decodedText) => {
+                    mostrarPrecio(decodedText);
+                    // Vibración corta al detectar (solo en algunos Android)
+                    if (navigator.vibrate) navigator.vibrate(100);
+                }
+            );
+            document.getElementById('result-box').innerHTML = "<p>Apunta al código...</p>";
+        } catch (err) {
+            console.error(err);
+            document.getElementById('result-box').innerHTML = `<p style="color:red">Error: ${err}</p>`;
+            document.getElementById('startBtn').style.display = 'block';
+        }
+    }
 
     function mostrarPrecio(codigo) {
         const resBox = document.getElementById('result-box');
         const p = productos[codigo];
-
         if (p) {
-            resBox.innerHTML = `
-                <div class="name">${p.nombre}</div>
-                <div class="price">$${p.precio}</div>
-                <small>Código: ${codigo}</small>
-            `;
+            resBox.innerHTML = `<div class="name">${p.nombre}</div><div class="price">$${p.precio}</div>`;
         } else {
-            resBox.innerHTML = `
-                <div style="color:red">No registrado</div>
-                <small>Código: ${codigo}</small>
-                <button onclick="prellenarForm('${codigo}')">Registrar ahora</button>
-            `;
+            resBox.innerHTML = `<div>No registrado</div><button onclick="prellenarForm('${codigo}')">Registrar ${codigo}</button>`;
         }
     }
 
@@ -78,23 +53,4 @@
         document.getElementById('newCode').value = codigo;
         document.getElementById('newName').focus();
     }
-
-    function guardarProducto() {
-        const code = document.getElementById('newCode').value;
-        const name = document.getElementById('newName').value;
-        const price = document.getElementById('newPrice').value;
-
-        if(code && name && price) {
-            productos[code] = { nombre: name, precio: price };
-            localStorage.setItem('misProductos', JSON.stringify(productos));
-            alert("Guardado correctamente");
-            // Limpiar campos
-            document.getElementById('newCode').value = '';
-            document.getElementById('newName').value = '';
-            document.getElementById('newPrice').value = '';
-        }
-    }
 </script>
-
-</body>
-</html>
