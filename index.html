@@ -4,18 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checador Pro</title>
-    <!-- Fuente 1: Cloudflare (Muy rápida) -->
-    <script src="https://cloudflare.com"></script>
+    <script src="https://unpkg.com" type="text/javascript"></script>
     <style>
         body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
-        #reader { width: 100%; border-radius: 8px; background: #000; display: none; margin-bottom: 10px; }
-        .result-box { margin-top: 15px; padding: 25px; background: #fff; border: 2px solid #eee; border-radius: 12px; min-height: 150px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .precio-grande { color: #28a745; font-size: 3.5rem; font-weight: bold; margin: 5px 0; }
-        .nombre-grande { font-size: 1.6rem; color: #333; font-weight: bold; text-transform: uppercase; }
-        .codigo-texto { color: #888; font-size: 0.9rem; margin-top: 10px; }
-        button { background: #007bff; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1.1rem; }
-        input { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+        #reader { width: 100%; border-radius: 8px; background: #000; display: none; }
+        .result-box { margin-top: 15px; padding: 15px; background: #eee; border-radius: 8px; min-height: 60px; }
+        button { background: #007bff; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; }
+        input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        
+        .precio-grande { color: #28a745; font-size: 2.5rem; font-weight: bold; margin: 5px 0; }
+        .nombre-grande { font-size: 1.3rem; font-weight: bold; color: #333; }
+
+        /* EL PANEL INICIA OCULTO */
+        #panelRegistro { display: none; }
     </style>
 </head>
 <body>
@@ -24,107 +26,93 @@
         <h2>Verificador de Precios</h2>
         <button id="btnStart" onclick="encender()">Encender Cámara</button>
         <div id="reader"></div>
-        <div class="result-box" id="result-box">
-            <p id="statusTxt" style="color:#666;">Sistema listo</p>
-        </div>
+        <div class="result-box" id="result-box">Listo para escanear</div>
     </div>
 
+    <!-- Panel de Registro -->
     <div class="card" id="panelRegistro">
-        <h3>Panel de Registro</h3>
-        <input type="text" id="newCode" placeholder="Código escaneado">
+        <h3>Registrar Producto Nuevo</h3>
+        <input type="text" id="newCode" placeholder="Código">
         <input type="text" id="newName" placeholder="Nombre del producto">
-        <input type="text" id="newPrice" placeholder="Precio (ej: 45.00)">
-        <button onclick="guardar()" style="background:#28a745; margin-top:10px;">Guardar en Memoria</button>
+        <input type="text" id="newPrice" placeholder="Precio (ej: 25.00)">
+        <button onclick="guardar()" style="background:#28a745; margin-top:10px;">Guardar Producto</button>
     </div>
 
     <script>
         let productos = JSON.parse(localStorage.getItem('misProductos')) || {};
         let scanner = null;
 
-        // Intentar cargar fuente de respaldo si la primera falla
-        if (typeof Html5Qrcode === "undefined") {
-            const fallback = document.createElement('script');
-            fallback.src = "https://unpkg.com";
-            document.head.appendChild(fallback);
-        }
-
-        async function encender() {
-            // Verificación de seguridad
+        function encender() {
             if (typeof Html5Qrcode === "undefined") {
-                alert("El sistema aún está conectando a internet. Espera 5 segundos.");
+                alert("La librería aún no carga.");
                 return;
             }
 
-            const btnStart = document.getElementById('btnStart');
-            const readerDiv = document.getElementById('reader');
-            const resultBox = document.getElementById('result-box');
+            document.getElementById('btnStart').style.display = 'none';
+            document.getElementById('reader').style.display = 'block';
+            
+            scanner = new Html5Qrcode("reader");
+            const config = { fps: 10, qrbox: { width: 250, height: 150 } };
 
-            btnStart.style.display = 'none';
-            readerDiv.style.display = 'block';
-            resultBox.innerHTML = "Buscando producto...";
-
-            try {
-                if (!scanner) scanner = new Html5Qrcode("reader");
-                
-                const config = { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 };
-
-                await scanner.start({ facingMode: "environment" }, config, (text) => {
-                    scanner.stop().then(() => {
-                        readerDiv.style.display = 'none';
-                        btnStart.style.display = 'block'; 
-                        btnStart.innerText = "Consultar otro";
-                        mostrar(text);
-                    });
-                    if (navigator.vibrate) navigator.vibrate(100);
+            scanner.start({ facingMode: "environment" }, config, (text) => {
+                scanner.stop().then(() => {
+                    document.getElementById('reader').style.display = 'none';
+                    document.getElementById('btnStart').style.display = 'block';
+                    document.getElementById('btnStart').innerText = "Escanear otro";
+                    mostrar(text);
                 });
-            } catch (err) {
+                if (navigator.vibrate) navigator.vibrate(100);
+            }).catch(err => {
                 alert("Error de cámara: " + err);
-                btnStart.style.display = 'block';
-            }
+                document.getElementById('btnStart').style.display = 'block';
+            });
         }
 
         function mostrar(codigo) {
             const box = document.getElementById('result-box');
-            const panelRegistro = document.getElementById('panelRegistro');
+            const panel = document.getElementById('panelRegistro');
             const p = productos[codigo];
-            
+
             if (p) {
-                panelRegistro.style.display = 'none';
+                // SI EXISTE: Nos aseguramos de ocultar el panel de registro
+                panel.style.display = 'none';
                 box.innerHTML = `
                     <div class="nombre-grande">${p.nombre}</div>
                     <div class="precio-grande">$${p.price}</div>
-                    <div class="codigo-texto">SKU: ${codigo}</div>
+                    <small>Código: ${codigo}</small>
                 `;
             } else {
-                panelRegistro.style.display = 'block';
+                // SI NO EXISTE: Mostramos el panel de registro
+                panel.style.display = 'block';
                 box.innerHTML = `
-                    <div style="color:#d9534f; font-weight:bold; font-size: 1.2rem;">PRODUCTO NUEVO</div>
-                    <div class="codigo-texto">Código detectado: ${codigo}</div>
-                    <button onclick="formPre('${codigo}')" style="background:#6c757d; padding:10px; margin-top:15px; font-size:0.9rem; width:auto;">Registrar Producto</button>
+                    <div style="color:red">No registrado: ${codigo}</div>
+                    <p>Usa el formulario de abajo para darlo de alta.</p>
                 `;
+                // Autocompletamos el código en el formulario
+                document.getElementById('newCode').value = codigo;
             }
         }
 
-        function formPre(c) {
-            document.getElementById('newCode').value = c;
-            document.getElementById('newName').focus();
-        }
-
         function guardar() {
-            const c = document.getElementById('newCode').value.trim();
-            const n = document.getElementById('newName').value.trim();
-            const p = document.getElementById('newPrice').value.trim();
+            const c = document.getElementById('newCode').value;
+            const n = document.getElementById('newName').value;
+            const p = document.getElementById('newPrice').value;
 
             if(c && n && p) {
                 productos[c] = { nombre: n, price: p };
                 localStorage.setItem('misProductos', JSON.stringify(productos));
                 alert("¡Guardado!");
+                
+                // Limpiar y ocultar panel tras guardar
                 document.getElementById('newCode').value = '';
                 document.getElementById('newName').value = '';
                 document.getElementById('newPrice').value = '';
-                // Al guardar, podemos ocultar el panel si queremos que se vea el resultado
                 document.getElementById('panelRegistro').style.display = 'none';
-                mostrar(c); 
+                
+                // Mostrar el precio recién guardado
+                mostrar(c);
+            } else {
+                alert("Llena todos los campos.");
             }
         }
     </script>
