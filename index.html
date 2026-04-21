@@ -3,41 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checador Pro</title>
+    <title>Checador Pro Full</title>
     <script src="https://unpkg.com" type="text/javascript"></script>
     <style>
-        body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; }
+        body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; height: 100vh; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
         #reader { width: 100%; border-radius: 8px; background: #000; display: none; }
         
-        /* Estilo para que los datos resalten en el centro */
+        /* Estilo para pantalla completa al mostrar datos */
         .result-box { 
             margin-top: 15px; 
             padding: 25px; 
             background: #fff; 
-            border: 2px solid #eee;
             border-radius: 12px; 
             min-height: 120px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        /* Clase que se activa para llenar la pantalla */
+        .full-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 9999;
+            margin: 0; border: none; border-radius: 0;
         }
         
-        .precio-grande { color: #28a745; font-size: 3rem; font-weight: bold; margin: 10px 0; }
-        .nombre-grande { font-size: 1.5rem; color: #333; font-weight: bold; }
+        .precio-grande { color: #28a745; font-size: 5rem; font-weight: bold; margin: 20px 0; }
+        .nombre-grande { font-size: 2.5rem; color: #333; font-weight: bold; padding: 0 10px; }
 
         button { background: #007bff; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1.1rem; }
         input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
         
-        /* CAMBIO 1: El segundo cuadro inicia oculto */
-        #cuadroRegistro { display: none; }
+        #panelRegistro { display: none; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>Verificador de Precios</h2>
+    <div class="card" id="mainCard">
+        <h2 id="mainTitle">Verificador de Precios</h2>
         <button id="btnStart" onclick="encender()">Encender Cámara</button>
         <div id="reader"></div>
         <div class="result-box" id="result-box">
@@ -45,8 +53,7 @@
         </div>
     </div>
 
-    <!-- CAMBIO 2: Le pusimos id="cuadroRegistro" para poder mandarlo llamar -->
-    <div class="card" id="cuadroRegistro">
+    <div class="card" id="panelRegistro">
         <h3>Registrar Producto</h3>
         <input type="text" id="newCode" placeholder="Código">
         <input type="text" id="newName" placeholder="Nombre del producto">
@@ -64,9 +71,13 @@
                 return;
             }
 
+            // Resetear vista al encender
+            const resultBox = document.getElementById('result-box');
+            resultBox.classList.remove('full-screen');
+            document.getElementById('mainTitle').style.display = 'block';
+
             const btnStart = document.getElementById('btnStart');
             const readerDiv = document.getElementById('reader');
-            const resultBox = document.getElementById('result-box');
 
             btnStart.style.display = 'none';
             readerDiv.style.display = 'block';
@@ -77,42 +88,51 @@
             const config = { fps: 10, qrbox: { width: 250, height: 150 } };
 
             scanner.start({ facingMode: "environment" }, config, (text) => {
-                // AL ENCONTRAR: Detenemos cámara y limpiamos
                 scanner.stop().then(() => {
                     scanner.clear();
                     readerDiv.style.display = 'none';
-                    btnStart.style.display = 'block'; // Reactivamos el botón
+                    btnStart.style.display = 'block'; 
                     btnStart.innerText = "Escanear otro producto";
                     mostrar(text);
                 });
-                
                 if (navigator.vibrate) navigator.vibrate(100);
             }).catch(err => {
                 alert("Error de cámara: " + err);
-                document.getElementById('btnStart').style.display = 'block';
+                btnStart.style.display = 'block';
             });
         }
 
         function mostrar(codigo) {
             const box = document.getElementById('result-box');
+            const panel = document.getElementById('panelRegistro');
             const p = productos[codigo];
             
-            // CAMBIO 3: Lógica para ocultar o mostrar el cuadro
             if (p) {
-                document.getElementById('cuadroRegistro').style.display = 'none';
+                panel.style.display = 'none';
+                document.getElementById('mainTitle').style.display = 'none'; // Ocultar título
+                box.classList.add('full-screen'); // Pantalla completa
                 box.innerHTML = `
                     <div class="nombre-grande">${p.nombre}</div>
                     <div class="precio-grande">$${p.price}</div>
-                    <small style="color:gray">Código: ${codigo}</small>
+                    <button onclick="cerrarVista()" style="width:auto; padding:10px 40px; margin-top:20px; background:#666;">Cerrar</button>
+                    <small style="color:gray; margin-top:20px;">Código: ${codigo}</small>
                 `;
             } else {
-                document.getElementById('cuadroRegistro').style.display = 'block';
+                box.classList.remove('full-screen');
+                panel.style.display = 'block';
                 box.innerHTML = `
                     <div style="color:red; font-weight:bold;">No registrado</div>
                     <div style="margin:10px 0;">Código: ${codigo}</div>
-                    <button onclick="formPre('${codigo}')" style="background:#6c757d; padding:8px; font-size:0.9rem;">Registrar ahora</button>
+                    <button onclick="formPre('${codigo}')" style="background:#6c757d; padding:8px; font-size:0.9rem; width:auto;">Registrar ahora</button>
                 `;
             }
+        }
+
+        function cerrarVista() {
+            const box = document.getElementById('result-box');
+            box.classList.remove('full-screen');
+            document.getElementById('mainTitle').style.display = 'block';
+            box.innerHTML = "<p>Presiona el botón para escanear</p>";
         }
 
         function formPre(c) {
@@ -132,8 +152,8 @@
                 document.getElementById('newCode').value = '';
                 document.getElementById('newName').value = '';
                 document.getElementById('newPrice').value = '';
-                // Ocultar al terminar de guardar
-                document.getElementById('cuadroRegistro').style.display = 'none';
+                document.getElementById('panelRegistro').style.display = 'none';
+                mostrar(c);
             }
         }
     </script>
