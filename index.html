@@ -1,41 +1,48 @@
-<div class="card">
-    <h2>Escáner de Precios</h2>
-    <!-- Botón para forzar el encendido -->
-    <button id="startBtn" onclick="iniciarCamara()" style="background:#28a745; margin-bottom:10px;">Encender Cámara</button>
-    
-    <div id="reader" style="display:none;"></div>
-    
-    <div class="result-box" id="result-box">
-        <p>Presiona el botón para escanear</p>
-    </div>
-</div>
-
 <script>
+    // 1. Esperamos a que todo el HTML y las librerías carguen
+    window.addEventListener('load', () => {
+        console.log("Librería cargada y lista");
+    });
+
     let productos = JSON.parse(localStorage.getItem('misProductos')) || {};
-    const html5QrCode = new Html5Qrcode("reader");
+    let html5QrCode; // Declaramos la variable globalmente
 
     async function iniciarCamara() {
-        document.getElementById('startBtn').style.display = 'none';
-        document.getElementById('reader').style.display = 'block';
-        document.getElementById('result-box').innerHTML = "<p>Cargando cámara...</p>";
+        const startBtn = document.getElementById('startBtn');
+        const readerDiv = document.getElementById('reader');
+        const resultBox = document.getElementById('result-box');
 
-        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
-
+        // 2. Inicializamos el objeto justo antes de usarlo
         try {
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+
+            startBtn.style.display = 'none';
+            readerDiv.style.display = 'block';
+            resultBox.innerHTML = "<p>Cargando cámara...</p>";
+
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 280, height: 150 },
+                aspectRatio: 1.0 
+            };
+
             await html5QrCode.start(
                 { facingMode: "environment" }, 
                 config, 
                 (decodedText) => {
                     mostrarPrecio(decodedText);
-                    // Vibración corta al detectar (solo en algunos Android)
-                    if (navigator.vibrate) navigator.vibrate(100);
+                    if (navigator.vibrate) navigator.vibrate(50);
                 }
             );
-            document.getElementById('result-box').innerHTML = "<p>Apunta al código...</p>";
+            
+            resultBox.innerHTML = "<p>Apunta al código...</p>";
+
         } catch (err) {
-            console.error(err);
-            document.getElementById('result-box').innerHTML = `<p style="color:red">Error: ${err}</p>`;
-            document.getElementById('startBtn').style.display = 'block';
+            console.error("Error detallado:", err);
+            resultBox.innerHTML = `<p style="color:red">Error: No se pudo acceder. Verifica permisos de cámara.</p>`;
+            startBtn.style.display = 'block';
         }
     }
 
@@ -43,14 +50,39 @@
         const resBox = document.getElementById('result-box');
         const p = productos[codigo];
         if (p) {
-            resBox.innerHTML = `<div class="name">${p.nombre}</div><div class="price">$${p.precio}</div>`;
+            resBox.innerHTML = `
+                <div style="font-size:1.2rem; font-weight:bold;">${p.nombre}</div>
+                <div style="font-size:2rem; color:green;">$${p.precio}</div>
+                <small>${codigo}</small>
+            `;
         } else {
-            resBox.innerHTML = `<div>No registrado</div><button onclick="prellenarForm('${codigo}')">Registrar ${codigo}</button>`;
+            resBox.innerHTML = `
+                <div style="color:orange">Código: ${codigo}</div>
+                <p>No registrado</p>
+                <button onclick="prellenarForm('${codigo}')" style="background:#6c757d; color:white; border:none; padding:5px; border-radius:5px;">Registrar</button>
+            `;
         }
     }
 
     function prellenarForm(codigo) {
         document.getElementById('newCode').value = codigo;
         document.getElementById('newName').focus();
+    }
+
+    function guardarProducto() {
+        const code = document.getElementById('newCode').value;
+        const name = document.getElementById('newName').value;
+        const price = document.getElementById('newPrice').value;
+
+        if(code && name && price) {
+            productos[code] = { nombre: name, precio: price };
+            localStorage.setItem('misProductos', JSON.stringify(productos));
+            alert("¡Guardado!");
+            document.getElementById('newCode').value = '';
+            document.getElementById('newName').value = '';
+            document.getElementById('newPrice').value = '';
+        } else {
+            alert("Faltan datos");
+        }
     }
 </script>
