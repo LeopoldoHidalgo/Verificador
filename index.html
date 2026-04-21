@@ -33,16 +33,16 @@
 </head>
 <body>
 
-    
-
     <div class="card">
-        <h3>Registrar Producto</h3>
-        <input type="text" id="newCode" placeholder="Código">
-        <input type="text" id="newName" placeholder="Nombre del producto">
-        <input type="text" id="newPrice" placeholder="Precio (ej: 25.00)">
-        <button onclick="guardar()" style="background:#28a745; margin-top:10px;">Guardar Producto</button>
+        <h2>Verificador de Precios</h2>
+        <button id="btnStart" onclick="encender()">Encender Cámara</button>
+        <div id="reader"></div>
+        <div class="result-box" id="result-box">
+            <p>Presiona el botón para escanear</p>
+        </div>
     </div>
 
+ 
     <script>
         let productos = JSON.parse(localStorage.getItem('misProductos')) || {};
         let scanner = null;
