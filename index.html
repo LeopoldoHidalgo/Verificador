@@ -1,295 +1,134 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Comparador de Precios con Carrito</title>
-  <!-- Biblioteca externa para leer códigos de barras -->
-  <script src="https://unpkg.com" type="text/javascript"></script>
-  <style>
-    body { font-family: Arial, sans-serif; text-align: center; }
-    input { padding: 10px; font-size: 16px; margin: 10px; width: 250px; }
-    button { padding: 10px 20px; font-size: 16px; background: #3498db; color: white; border: none; border-radius: 5px; margin: 5px; cursor: pointer; }
-    button:hover { background: #2980b9; }
-    table { margin: 20px auto; border-collapse: collapse; width: 90%; background: #fff; }
-    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
-    th { background-color: #3498db; color: white; }
-    #carrito { font-size: 20px; font-weight: bold; margin: 15px; color: #2c3e50; }
-    .oculto { display: none; }
-    
-    /* Estilos heredados del checador para la cámara */
-    #reader { width: 100%; max-width: 400px; margin: 0 auto; border-radius: 8px; background: #000; display: none; }
-    .manual-box {
-      margin: 15px auto;
-      padding: 10px;
-      width: 100%;
-      max-width: 380px;
-      border: 1px dashed #7f8c8d;
-      border-radius: 5px;
-      background: #f8f9fa;
-      box-sizing: border-box;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checador Pro</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
+        #reader { width: 100%; border-radius: 8px; background: #000; display: none; }
+        
+        /* Estilo para que los datos resalten en el centro */
+        .result-box { 
+            margin-top: 15px; 
+            padding: 25px; 
+            background: #fff; 
+            border: 2px solid #eee;
+            border-radius: 12px; 
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .precio-grande { color: #28a745; font-size: 25vw; font-weight: bold; margin: 10px 0; }
+        .nombre-grande { font-size: 5vw; color: #333; font-weight: bold; }
+
+        button { background: #007bff; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1.1rem; }
+        input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+    </style>
 </head>
 <body>
-  <h2>Comparador de Precios</h2>
-  
-  <div id="carrito">🛒 Total carrito: $0.00</div>
-  
-  <button onclick="toggleLista()">👁️ Mostrar / Ocultar lista de compras</button>
-  
-  <div id="contenedorLista" class="oculto">
-    <table id="detalleCarrito">
-      <thead>
-        <tr>
-          <th>Producto</th>
-          <th>Cantidad</th>
-          <th>Precio unitario</th>
-          <th>Subtotal</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
- 
-  <p>Escanea el código de barras</p>
-  
-  <!-- Estructura de encendido del checador -->
-  <button id="btnStart" onclick="encender()">Encender Cámara</button>
-  <div id="reader"></div>
 
-  <div class="manual-box">
-    <p style="margin: 5px; font-size: 14px; color: #555;">Si la cámara no enciende o falla, escribe aquí:</p>
-    <input type="text" id="codigoManual" placeholder="Escribe el código a mano">
-    <button onclick="buscarManual()">Buscar manual</button>
-  </div>
-
-  <div id="resultado"></div>
- 
-  <h3>Respaldo de la base</h3>
-  <button onclick="exportarCSV()">Exportar base a CSV</button><br>
-  <input type="file" id="archivoCSV" accept=".csv">
-  <button onclick="importarCSV()">Importar base desde CSV</button>
- 
-  <button onclick="resetCarrito()">🔄 Restablecer carrito</button>
- 
-  <script>
-    let productos = JSON.parse(localStorage.getItem("productos")) || {
-      "7501234567890": { nombre: "Coca-Cola", presentacion: "500 ml", precioAnterior: 18.00 },
-      "7509876543210": { nombre: "Cerveza", presentacion: "1.2 L", precioAnterior: 35.00 }
-    };
- 
-    let totalCarrito = 0;
-    let detalle = [];
-    let scanner = null; // Variable para la cámara
- 
-    function guardarLocal() {
-      localStorage.setItem("productos", JSON.stringify(productos));
-    }
-
-    function toggleLista() {
-      let lista = document.getElementById("contenedorLista");
-      lista.classList.toggle("oculto");
-    }
- 
-    function actualizarCarrito() {
-      document.getElementById("carrito").textContent = `🛒 Total carrito: $${totalCarrito.toFixed(2)}`;
-      let tbody = document.querySelector("#detalleCarrito tbody");
-      tbody.innerHTML = "";
-      detalle.forEach(item => {
-        tbody.innerHTML += `
-          <tr>
-            <td>${item.nombre}</td>
-            <td>${item.cantidad}</td>
-            <td>$${item.precio.toFixed(2)}</td>
-            <td>$${item.subtotal.toFixed(2)}</td>
-          </tr>
-        `;
-      });
-    }
-
-    // NUEVA FUNCIÓN: Lógica de encendido extraída de tu checador funcional
-    function encender() {
-      if (typeof Html5Qrcode === "undefined") {
-        alert("La librería aún no carga. Espera 2 segundos.");
-        return;
-      }
-
-      const btnStart = document.getElementById('btnStart');
-      const readerDiv = document.getElementById('reader');
-
-      btnStart.style.display = 'none';
-      readerDiv.style.display = 'block';
-
-      scanner = new Html5Qrcode("reader");
-      const config = { fps: 10, qrbox: { width: 250, height: 150 } };
-
-      scanner.start({ facingMode: "environment" }, config, (text) => {
-        // Al encontrar el código, apagamos la cámara y mostramos los datos (como en tu checador)
-        scanner.stop().then(() => {
-          scanner.clear();
-          readerDiv.style.display = 'none';
-          btnStart.style.display = 'block';
-          btnStart.innerText = "Escanear otro producto";
-          buscarProducto(text);
-        });
-        
-        if (navigator.vibrate) navigator.vibrate(100);
-      }).catch(err => {
-        alert("Error de cámara: " + err);
-        btnStart.style.display = 'block';
-      });
-    }
-
-    function buscarManual() {
-      let codigo = document.getElementById("codigoManual").value.trim();
-      if (!codigo) {
-        alert("Por favor ingresa un código de barras.");
-        return;
-      }
-      buscarProducto(codigo);
-      document.getElementById("codigoManual").value = ""; 
-    }
- 
-    // Regresamos a tu función original de búsqueda de datos
-    function buscarProducto(codigo) {
-      let contenedor = document.getElementById("resultado");
- 
-      if (productos[codigo]) {
-        let p = productos[codigo];
-        contenedor.innerHTML = `
-          <h3>${p.nombre} - ${p.presentacion}</h3>
-          <p>Precio anterior: $${p.precioAnterior.toFixed(2)}</p>
-          <input type="number" id="precioActual" placeholder="Ingresa precio actual" step="0.01">
-          <button onclick="comparar('${codigo}')">Comparar</button>
-        `;
-      } else {
-        contenedor.innerHTML = `
-          <h3>Producto no registrado (${codigo})</h3>
-          <p>Ingresa los datos para guardarlo en la base de datos:</p>
-          <input type="text" id="nombre" placeholder="Nombre"><br>
-          <input type="text" id="presentacion" placeholder="Presentación"><br>
-          <input type="number" id="precioNuevo" placeholder="Precio actual" step="0.01"><br>
-          <button onclick="guardarNuevoProducto('${codigo}')">Guardar en la base de datos</button>
-        `;
-      }
-    }
- 
-    // Regresamos a tu función original de comparar (con tablas y porcentajes)
-    function comparar(codigo) {
-      let inputPrecio = document.getElementById("precioActual").value;
-      let precioActual = parseFloat(inputPrecio);
-      
-      if (!inputPrecio || isNaN(precioActual) || precioActual < 0) {
-        alert("Por favor ingresa un precio actual válido.");
-        return;
-      }
- 
-      let p = productos[codigo];
-      let diferencia = precioActual - p.precioAnterior;
-      let porcentaje = ((diferencia / p.precioAnterior) * 100).toFixed(2);
- 
-      document.getElementById("resultado").innerHTML = `
-        <h3>${p.nombre} - ${p.presentacion}</h3>
-        <table>
-          <tr>
-            <th>Precio anterior</th>
-            <th>Precio actual</th>
-            <th>Diferencia</th>
-          </tr>
-          <tr>
-            <td>$${p.precioAnterior.toFixed(2)}</td>
-            <td>$${precioActual.toFixed(2)}</td>
-            <td>$${diferencia.toFixed(2)} (${porcentaje}%)</td>
-          </tr>
-        </table>
-        <button onclick="agregarCarrito('${codigo}', '${p.nombre}', ${precioActual})">➕ Agregar al carrito</button>
-      `;
- 
-      productos[codigo].precioAnterior = precioActual;
-      guardarLocal();
-    }
- 
-    function agregarCarrito(codigo, nombre, precioActual) {
-      let cantidad = prompt("¿Cuántos artículos deseas agregar?");
-      cantidad = parseInt(cantidad);
-      if (isNaN(cantidad) || cantidad <= 0) {
-        alert("Cantidad inválida.");
-        return;
-      }
-      let subtotal = precioActual * cantidad;
-      totalCarrito += subtotal;
-      detalle.push({ nombre, cantidad, precio: precioActual, subtotal });
-      actualizarCarrito();
-    }
- 
-    function guardarNuevoProducto(codigo) {
-      let nombre = document.getElementById("nombre").value.trim();
-      let presentacion = document.getElementById("presentacion").value.trim();
-      let precioActual = parseFloat(document.getElementById("precioNuevo").value);
- 
-      if (!nombre || !presentacion || isNaN(precioActual) || precioActual < 0) {
-        alert("Por favor ingresa todos los datos correctamente.");
-        return;
-      }
- 
-      productos[codigo] = { nombre, presentacion, precioAnterior: precioActual };
-      guardarLocal();
- 
-      document.getElementById("resultado").innerHTML = `
-        <div style="background: #e8f4f8; padding: 15px; border-radius: 5px; margin: 10px auto; width: 90%; max-width: 400px; box-sizing: border-box;">
-          <p style="color: #27ae60; font-weight: bold;">✔ Producto guardado con éxito.</p>
-          <h3>${nombre} - ${presentacion}</h3>
-          <p>Precio registrado: $${precioActual.toFixed(2)}</p>
-          <button onclick="agregarCarrito('${codigo}', '${nombre}', ${precioActual})">➕ Agregar al carrito</button>
+    <div class="card">
+        <h2>Verificador de Precios</h2>
+        <button id="btnStart" onclick="encender()">Encender Cámara</button>
+        <div id="reader"></div>
+        <div class="result-box" id="result-box">
+            <p>Presiona el botón para escanear</p>
         </div>
-      `;
-    }
- 
-    function exportarCSV() {
-      if (Object.keys(productos).length === 0) { alert("No hay productos."); return; }
-      let csv = "Codigo,Nombre,Presentacion,PrecioAnterior\n";
-      for (let codigo in productos) {
-        let p = productos[codigo];
-        csv += `${codigo},${p.nombre.replace(/,/g, " ")},${p.presentacion.replace(/,/g, " ")},${p.precioAnterior}\n`;
-      }
-      let blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      let link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "productos.csv";
-      link.click();
-    }
- 
-    function importarCSV() {
-      let archivo = document.getElementById("archivoCSV").files;
-      if (!archivo) { alert("Selecciona un archivo CSV primero."); return; }
-      let lector = new FileReader();
-      lector.onload = function(e) {
-        let lineas = e.target.result.split("\n");
-        let importados = 0;
-        for (let i = 1; i < lineas.length; i++) {
-          let linea = lineas[i].trim();
-          if (!linea) continue;
-          let campos = linea.split(",");
-          if (campos.length >= 4) {
-            let codigo = campos.trim();
-            let precioAnterior = parseFloat(campos);
-            if (codigo && !isNaN(precioAnterior)) {
-              productos[codigo] = { nombre: campos.trim(), presentacion: campos.trim(), precioAnterior };
-              importados++;
+    </div>
+
+    
+
+    <script>
+        let productos = JSON.parse(localStorage.getItem('misProductos')) || {};
+        let scanner = null;
+
+        function encender() {
+            if (typeof Html5Qrcode === "undefined") {
+                alert("La librería aún no carga. Espera 2 segundos.");
+                return;
             }
-          }
+
+            const btnStart = document.getElementById('btnStart');
+            const readerDiv = document.getElementById('reader');
+            const resultBox = document.getElementById('result-box');
+
+            btnStart.style.display = 'none';
+            readerDiv.style.display = 'block';
+            resultBox.innerHTML = "Buscando...";
+
+            scanner = new Html5Qrcode("reader");
+            
+            const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+
+            scanner.start({ facingMode: "environment" }, config, (text) => {
+                // AL ENCONTRAR: Detenemos cámara y limpiamos
+                scanner.stop().then(() => {
+                    scanner.clear();
+                    readerDiv.style.display = 'none';
+                    btnStart.style.display = 'block'; // Reactivamos el botón
+                    btnStart.innerText = "Escanear otro producto";
+                    mostrar(text);
+                });
+                
+                if (navigator.vibrate) navigator.vibrate(100);
+            }).catch(err => {
+                alert("Error de cámara: " + err);
+                btnStart.style.display = 'block';
+            });
         }
-        guardarLocal();
-        alert(`Base importada correctamente. Se actualizaron ${importados} productos.`);
-      };
-      lector.readAsText(archivo);
-    }
- 
-    function resetCarrito() {
-      totalCarrito = 0;
-      detalle = [];
-      actualizarCarrito();
-    }
-  </script>
+
+        function mostrar(codigo) {
+            const box = document.getElementById('result-box');
+            const p = productos[codigo];
+            
+            if (p) {
+                box.innerHTML = `
+                    <div class="nombre-grande">${p.nombre}</div>
+                    <div class="precio-grande">$${p.price}</div>
+                    <small style="color:gray">Código: ${codigo}</small>
+                `;
+            } else {
+                box.innerHTML = `
+                    <div style="color:red; font-weight:bold;">No registrado</div>
+                    <div style="margin:10px 0;">Código: ${codigo}</div>
+                    <button onclick="formPre('${codigo}')" style="background:#6c757d; padding:8px; font-size:0.9rem;">Registrar ahora</button>
+
+     <div class="card">
+        <h3>Registrar Producto</h3>
+        <input type="text" id="newCode" placeholder="Código">
+        <input type="text" id="newName" placeholder="Nombre del producto">
+        <input type="text" id="newPrice" placeholder="Precio (ej: 25.00)">
+        <button onclick="guardar()" style="background:#28a745; margin-top:10px;">Guardar Producto</button>
+    </div>
+                `;
+            }
+        }
+
+        function formPre(c) {
+            document.getElementById('newCode').value = c;
+            document.getElementById('newName').focus();
+        }
+
+        function guardar() {
+            const c = document.getElementById('newCode').value.trim();
+            const n = document.getElementById('newName').value.trim();
+            const p = document.getElementById('newPrice').value.trim();
+
+            if(c && n && p) {
+                productos[c] = { nombre: n, price: p };
+                localStorage.setItem('misProductos', JSON.stringify(productos));
+                alert("¡Guardado!");
+                document.getElementById('newCode').value = '';
+                document.getElementById('newName').value = '';
+                document.getElementById('newPrice').value = '';
+            }
+        }
+    </script>
 </body>
 </html>
