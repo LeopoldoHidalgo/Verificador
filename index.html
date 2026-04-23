@@ -1,134 +1,551 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checador Pro</title>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <style>
-        body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
-        #reader { width: 100%; border-radius: 8px; background: #000; display: none; }
-        
-        /* Estilo para que los datos resalten en el centro */
-        .result-box { 
-            margin-top: 15px; 
-            padding: 25px; 
-            background: #fff; 
-            border: 2px solid #eee;
-            border-radius: 12px; 
-            min-height: 120px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .precio-grande { color: #28a745; font-size: 25vw; font-weight: bold; margin: 10px 0; }
-        .nombre-grande { font-size: 5vw; color: #333; font-weight: bold; }
-
-        button { background: #007bff; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1.1rem; }
-        input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-    </style>
-</head>
-<body>
-
-    <div class="card">
-        <h2>Verificador de Precios</h2>
-        <button id="btnStart" onclick="encender()">Encender Cámara</button>
-        <div id="reader"></div>
-        <div class="result-box" id="result-box">
-            <p>Presiona el botón para escanear</p>
-        </div>
-    </div>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificador de Precios</title>
+  
+  <!-- 📷 Librería ligera para escanear Códigos de Barras -->
+  <script src="https://unpkg.com"></script>
+  
+  <style>
+    /* 🎨 ESTILOS ENFOCADOS EN TABLETA */
+    :root {
+      --color-fondo: #2c3e50; 
+      --color-primario: #34495e;
+      --color-acento: #2ecc71;
+      --color-texto: #333;
+    }
     
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--color-fondo);
+      color: var(--color-texto);
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      box-sizing: border-box;
+      position: relative;
+    }
 
-    <script>
-        let productos = JSON.parse(localStorage.getItem('misProductos')) || {};
-        let scanner = null;
+    .kiosko-container {
+      width: 90%;
+      max-width: 700px;
+      background: #ffffff;
+      padding: 50px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3); 
+      text-align: center;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
 
-        function encender() {
-            if (typeof Html5Qrcode === "undefined") {
-                alert("La librería aún no carga. Espera 2 segundos.");
-                return;
-            }
+    h1 {
+      color: var(--color-primario);
+      font-size: 3.2rem;
+      margin: 0 0 10px 0;
+      font-weight: 800;
+    }
 
-            const btnStart = document.getElementById('btnStart');
-            const readerDiv = document.getElementById('reader');
-            const resultBox = document.getElementById('result-box');
+    .instruccion {
+      font-size: 1.5rem;
+      color: #7f8c8d;
+      margin: 0 0 35px 0;
+    }
 
-            btnStart.style.display = 'none';
-            readerDiv.style.display = 'block';
-            resultBox.innerHTML = "Buscando...";
+    input[type="text"] {
+      width: 100%;
+      padding: 25px;
+      font-size: 2rem;
+      text-align: center;
+      border: 3px solid #dfe6e9;
+      border-radius: 12px;
+      box-sizing: border-box;
+      outline: none;
+      background-color: #fafafa;
+    }
 
-            scanner = new Html5Qrcode("reader");
-            
-            const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+    button {
+      width: 100%;
+      padding: 22px;
+      font-size: 1.8rem;
+      background-color: #2980b9; 
+      color: white;
+      border: none;
+      border-radius: 12px;
+      margin-top: 20px;
+      cursor: pointer;
+      font-weight: bold;
+      flex-shrink: 0;
+      transition: background-color 0.2s;
+    }
 
-            scanner.start({ facingMode: "environment" }, config, (text) => {
-                // AL ENCONTRAR: Detenemos cámara y limpiamos
-                scanner.stop().then(() => {
-                    scanner.clear();
-                    readerDiv.style.display = 'none';
-                    btnStart.style.display = 'block'; // Reactivamos el botón
-                    btnStart.innerText = "Escanear otro producto";
-                    mostrar(text);
-                });
-                
-                if (navigator.vibrate) navigator.vibrate(100);
-            }).catch(err => {
-                alert("Error de cámara: " + err);
-                btnStart.style.display = 'block';
-            });
-        }
+    button:hover {
+      background-color: #2471a3;
+    }
 
-        function mostrar(codigo) {
-            const box = document.getElementById('result-box');
-            const p = productos[codigo];
-            
-            if (p) {
-                box.innerHTML = `
-                    <div class="nombre-grande">${p.nombre}</div>
-                    <div class="precio-grande">$${p.price}</div>
-                    <small style="color:gray">Código: ${codigo}</small>
-                `;
-            } else {
-                box.innerHTML = `
-                    <div style="color:red; font-weight:bold;">No registrado</div>
-                    <div style="margin:10px 0;">Código: ${codigo}</div>
-                    <button onclick="formPre('${codigo}')" style="background:#6c757d; padding:8px; font-size:0.9rem;">Registrar ahora</button>
+    /* 🏷️ AREA DE RESULTADO GIGANTE */
+    .display-precio {
+      padding: 80px 20px; 
+      background: #f1f2f6;
+      border-radius: 15px;
+      display: none; 
+      animation: fadeIn 0.3s ease-in-out;
+    }
 
-     <div class="card">
-        <h3>Registrar Producto</h3>
-        <input type="text" id="newCode" placeholder="Código">
-        <input type="text" id="newName" placeholder="Nombre del producto">
-        <input type="text" id="newPrice" placeholder="Precio (ej: 25.00)">
-        <button onclick="guardar()" style="background:#28a745; margin-top:10px;">Guardar Producto</button>
+    .nombre-producto {
+      font-size: 2.5rem;
+      color: var(--color-primario);
+      margin: 0;
+      font-weight: 700;
+    }
+
+    .presentacion-producto {
+      font-size: 1.6rem;
+      color: #7f8c8d;
+      margin: 5px 0 0 0;
+      font-weight: 600;
+    }
+
+    .precio-producto {
+      font-size: 8rem; 
+      color: var(--color-acento);
+      margin: 10px 0 0 0;
+      font-weight: 800;
+    }
+
+    /* 📱 CONTENEDOR DE COINCIDENCIAS */
+    .contenedor-coincidencias {
+      display: none;
+      text-align: left;
+      animation: fadeIn 0.3s ease-in-out;
+      overflow-y: auto;
+      flex-grow: 1;
+      padding-right: 10px;
+      margin-bottom: 20px;
+    }
+
+    .titulo-coincidencias {
+      font-size: 1.6rem;
+      color: var(--color-primario);
+      margin: 0 0 20px 0;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .item-coincidencia {
+      background: #fafafa;
+      padding: 20px;
+      margin-bottom: 15px;
+      border-radius: 12px;
+      border: 2px solid #eee;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .item-coincidencia:hover {
+      background: #f1f2f6;
+      border-color: var(--color-primario);
+    }
+
+    .item-nombre {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--color-texto);
+      margin: 0;
+    }
+
+    .item-presentacion {
+      font-size: 1.1rem;
+      color: #7f8c8d;
+      margin: 3px 0 0 0;
+    }
+
+    .item-icono {
+      font-size: 2rem;
+      color: var(--color-acento);
+    }
+
+    .no-encontrado {
+      color: #e74c3c;
+      font-size: 2rem;
+      font-weight: bold;
+      padding: 40px 0;
+    }
+
+    .oculto {
+      display: none !important;
+    }
+
+    /* 🔒 BOTONES DE ADMINISTRADOR DISCRETOS */
+    .admin-secreto {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      width: 45px;
+      height: 45px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      margin: 0;
+      padding: 0;
+      opacity: 0.1; 
+      transition: opacity 0.3s;
+      font-size: 1.5rem;
+      z-index: 100;
+    }
+    
+    .admin-secreto:hover {
+      opacity: 0.8;
+    }
+
+    .camara-secreta {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      width: 45px;
+      height: 45px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      margin: 0;
+      padding: 0;
+      opacity: 0.1; 
+      transition: opacity 0.3s;
+      font-size: 1.5rem;
+      z-index: 100;
+    }
+
+    .camara-secreta:hover {
+      opacity: 0.8;
+    }
+
+    /* 📷 Estilos del Lector de Cámara */
+    #lector-qr {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto 20px auto;
+      border-radius: 12px;
+      overflow: hidden;
+      display: none;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body onload="inicializarApp()">
+
+  <!-- Botón discreto a la derecha para cargar CSV -->
+  <button class="admin-secreto" onclick="activarCargaOculta()">⚙️</button>
+
+  <!-- Botón discreto a la izquierda para activar cámara -->
+  <button class="camara-secreta" onclick="toggleCamara()">👁️</button>
+  
+  <!-- Input de archivos invisible en el código -->
+  <input type="file" id="archivoCSVOculto" accept=".csv" class="oculto" onchange="procesarCSVOculto(this)">
+
+  <div class="kiosko-container">
+    <!-- PANTALLA 1: Captura -->
+    <div id="pantallaCaptura">
+      <h1>Verificador</h1>
+      <p class="instruccion">Escribe el código de barras o el nombre del producto</p>
+      
+      <!-- 📷 Lector de cámara oculto inicialmente -->
+      <div id="lector-qr"></div>
+      
+      <input type="text" id="lectorEntrada" placeholder="Buscar aquí..." autofocus>
+      <button onclick="accionVerificar()">Consultar Precio</button>
     </div>
-                `;
+    
+    <!-- PANTALLA 2: Lista de Coincidencias -->
+    <div id="pantallaCoincidencias" class="contenedor-coincidencias">
+      <p class="titulo-coincidencias">Se encontraron varios productos. Toca el tuyo:</p>
+      <div id="listaCoincidencias"></div>
+    </div>
+    
+    <!-- PANTALLA 3: Salida del Precio Gigante -->
+    <div id="pantallaResultado" class="display-precio"></div>
+    
+    <!-- Botón para volver a buscar -->
+    <button id="btnVolver" class="oculto" onclick="restablecerPantalla()" style="background-color: #7f8c8d;">🔍 Nueva Consulta</button>
+  </div>
+
+  <script>
+    let productosRegistrados = {};
+    let temporizadorRegreso = null; 
+    let html5QrCode = null; // 📷 Instancia de la cámara
+
+    /* =======================================================
+       📦 CAPA DE DATOS
+       ======================================================= */
+    function dbConsultarProducto(busqueda) {
+      const termino = busqueda.toLowerCase().trim();
+
+      if (productosRegistrados[termino]) {
+        return [productosRegistrados[termino]];
+      }
+
+      let coincidencias = [];
+      for (const codigo in productosRegistrados) {
+        const nombreProducto = productosRegistrados[codigo].nombre.toLowerCase();
+        if (nombreProducto.includes(termino)) {
+          coincidencias.push({ ...productosRegistrados[codigo], codigo: codigo });
+        }
+      }
+
+      return coincidencias;
+    }
+
+    function inicializarApp() {
+      const dbGuardada = localStorage.getItem("productos_kiosko");
+      if (dbGuardada) {
+        productosRegistrados = JSON.parse(dbGuardada);
+      } else {
+        productosRegistrados = {
+          "7501030426653": { nombre: "Pan Blanco Bimbo", presentacion: "Grande 567g", precio: 45.00 },
+          "7501000111204": { nombre: "Coca Cola Original", presentacion: "600 ml", precio: 20.00 },
+          "7501055305313": { nombre: "Coca Cola Sin Azucar", presentacion: "600 ml", precio: 20.00 },
+          "7501000632129": { nombre: "Papas Sabritas Originales", presentacion: "42 gr", precio: 18.00 }
+        };
+      }
+    }
+
+    /* =======================================================
+       🎮 CAPA DE INTERFAZ (UI)
+       ======================================================= */
+    function accionVerificar() {
+      const input = document.getElementById("lectorEntrada");
+      const display = document.getElementById("pantallaResultado");
+      const pantallaCaptura = document.getElementById("pantallaCaptura");
+      const pantallaCoincidencias = document.getElementById("pantallaCoincidencias");
+      const listaCoincidencias = document.getElementById("listaCoincidencias");
+      const btnVolver = document.getElementById("btnVolver");
+      
+      const busqueda = input.value.trim();
+      if (!busqueda) return;
+
+      const resultados = dbConsultarProducto(busqueda);
+
+      pantallaCaptura.classList.add("oculto");
+      btnVolver.classList.remove("oculto");
+      
+      // Apaga la cámara si estaba encendida al momento de consultar
+      cerrarCamara();
+
+      if (resultados.length === 1) {
+        display.style.display = "block";
+        mostrarPrecioGigante(resultados);
+        iniciarTemporizador(); 
+      } else if (resultados.length > 1) {
+        pantallaCoincidencias.style.display = "block";
+        listaCoincidencias.innerHTML = "";
+        iniciarTemporizador(); 
+        
+        resultados.forEach(prod => {
+          const div = document.createElement("div");
+          div.className = "item-coincidencia";
+          div.innerHTML = `
+            <div>
+              <p class="item-nombre">${prod.nombre}</p>
+              <p class="item-presentacion">${prod.presentacion || 'Sin presentación'}</p>
+            </div>
+            <div class="item-icono">➜</div>
+          `;
+          div.onclick = function() {
+            pantallaCoincidencias.style.display = "none";
+            display.style.display = "block";
+            mostrarPrecioGigante(prod);
+            iniciarTemporizador(); 
+          };
+          listaCoincidencias.appendChild(div);
+        });
+      } else {
+        display.style.display = "block";
+        display.innerHTML = `
+          <p class="no-encontrado">❌ No se encontró el producto</p>
+          <p style="color:#7f8c8d; margin:15px 0 0 0; font-size:1.4rem;">Intenta con el código de barras o acude con un empleado.</p>
+        `;
+        iniciarTemporizador(); 
+      }
+
+      input.value = "";
+    }
+
+    function mostrarPrecioGigante(producto) {
+      const display = document.getElementById("pantallaResultado");
+      display.innerHTML = `
+        <p class="nombre-producto">${producto.nombre}</p>
+        <p class="presentacion-producto">${producto.presentacion || ''}</p>
+        <p class="precio-producto">$${producto.precio.toFixed(2)}</p>
+      `;
+    }
+
+    function iniciarTemporizador() {
+      if (temporizadorRegreso) {
+        clearTimeout(temporizadorRegreso);
+      }
+      temporizadorRegreso = setTimeout(() => {
+        restablecerPantalla();
+      }, 10000); 
+    }
+
+    function restablecerPantalla() {
+      const input = document.getElementById("lectorEntrada");
+      const display = document.getElementById("pantallaResultado");
+      const pantallaCaptura = document.getElementById("pantallaCaptura");
+      const pantallaCoincidencias = document.getElementById("pantallaCoincidencias");
+      const btnVolver = document.getElementById("btnVolver");
+
+      if (temporizadorRegreso) {
+        clearTimeout(temporizadorRegreso);
+      }
+
+      display.style.display = "none";
+      pantallaCoincidencias.style.display = "none";
+      btnVolver.classList.add("oculto");
+      pantallaCaptura.classList.remove("oculto");
+
+      input.focus();
+    }
+
+    document.getElementById("lectorEntrada").addEventListener("keypress", function(e) {
+      if (e.key === "Enter") {
+        accionVerificar();
+      }
+    });
+
+    /* =======================================================
+       📷 FUNCIONES OCULTAS DE LA CÁMARA
+       ======================================================= */
+    function toggleCamara() {
+      const lectorDiv = document.getElementById("lector-qr");
+
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("lector-qr");
+      }
+
+      if (lectorDiv.style.display === "none" || lectorDiv.style.display === "") {
+        lectorDiv.style.display = "block";
+
+        html5QrCode.start(
+          { facingMode: "environment" }, 
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 150 }
+          },
+          onScanSuccess,
+          onScanFailure
+        ).catch(err => {
+          alert("Error al acceder a la cámara. Asegúrate de otorgar permisos.");
+          cerrarCamara();
+          console.error(err);
+        });
+      } else {
+        cerrarCamara();
+      }
+    }
+
+    function cerrarCamara() {
+      const lectorDiv = document.getElementById("lector-qr");
+      
+      lectorDiv.style.display = "none";
+
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(err => console.error("Error al detener cámara:", err));
+      }
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+      document.getElementById("lectorEntrada").value = decodedText;
+      
+      if (navigator.vibrate) {
+        navigator.vibrate(200);
+      }
+
+      cerrarCamara();
+      accionVerificar(); // Consulta de forma inmediata al escanear
+    }
+
+    function onScanFailure(error) {
+      // Ignorar fallos de cuadros por segundo donde no localiza códigos
+    }
+
+    /* =======================================================
+       🛡️ CAPA DE CARGA CSV OCULTA
+       ======================================================= */
+    function activarCargaOculta() {
+      document.getElementById("archivoCSVOculto").click();
+    }
+
+    function procesarCSVOculto(input) {
+      const file = input.files; 
+      if (!file || !file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const contenido = e.target.result;
+        const lineas = contenido.split("\n");
+        let importados = 0;
+
+        for (let i = 0; i < lineas.length; i++) {
+          let linea = lineas[i].trim();
+          
+          if (!linea || linea.startsWith("sep=") || linea.startsWith("codigo,nombre")) {
+            continue;
+          }
+
+          let columnas = [];
+          let celdaActual = '';
+          let dentroDeComillas = false;
+
+          for (let j = 0; j < linea.length; j++) {
+            let char = linea[j];
+            if (char === '"') {
+              dentroDeComillas = !dentroDeComillas;
+            } else if (char === ',' && !dentroDeComillas) {
+              columnas.push(celdaActual.trim().replace(/^"|"$/g, ''));
+              celdaActual = '';
+            } else {
+              celdaActual += char;
             }
-        }
+          }
+          columnas.push(celdaActual.trim().replace(/^"|"$/g, ''));
 
-        function formPre(c) {
-            document.getElementById('newCode').value = c;
-            document.getElementById('newName').focus();
-        }
+          if (columnas.length >= 4) {
+            let codigo = columnas;
+            let nombre = columnas;
+            let presentacion = columnas;
+            let precio = parseFloat(columnas);
 
-        function guardar() {
-            const c = document.getElementById('newCode').value.trim();
-            const n = document.getElementById('newName').value.trim();
-            const p = document.getElementById('newPrice').value.trim();
-
-            if(c && n && p) {
-                productos[c] = { nombre: n, price: p };
-                localStorage.setItem('misProductos', JSON.stringify(productos));
-                alert("¡Guardado!");
-                document.getElementById('newCode').value = '';
-                document.getElementById('newName').value = '';
-                document.getElementById('newPrice').value = '';
+            if (codigo && nombre && !isNaN(precio)) {
+              productosRegistrados[codigo] = { nombre: nombre, presentacion: presentacion, precio: precio };
+              importados++;
             }
+          }
         }
-    </script>
+
+        if (importados > 0) {
+          localStorage.setItem("productos_kiosko", JSON.stringify(productosRegistrados));
+          alert(`¡Éxito! Se han cargado ${importados} productos de forma discreta.`);
+          location.reload(); 
+        } else {
+          alert("No se encontraron registros válidos en el archivo.");
+        }
+        
+        input.value = "";
+      };
+      reader.readAsText(file);
+    }
+  </script>
 </body>
 </html>
