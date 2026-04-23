@@ -344,7 +344,7 @@
 
       if (resultados.length === 1) {
         display.style.display = "block";
-        mostrarPrecioGigante(resultados);
+        mostrarPrecioGigante(resultados[0]);
         iniciarTemporizador(); 
       } else if (resultados.length > 1) {
         pantallaCoincidencias.style.display = "block";
@@ -425,7 +425,7 @@
     });
 
     /* =======================================================
-       📷 FUNCIONES OCULTAS DE LA CÁMARA
+       📷 FUNCIONES DE LA CÁMARA
        ======================================================= */
     function toggleCamara() {
       const lectorDiv = document.getElementById("lector-qr");
@@ -437,16 +437,17 @@
       if (lectorDiv.style.display === "none" || lectorDiv.style.display === "") {
         lectorDiv.style.display = "block";
 
+        // Iniciar el lector apuntando directamente a la cámara trasera
         html5QrCode.start(
           { facingMode: "environment" }, 
           {
-            fps: 10,
-            qrbox: { width: 250, height: 150 }
+            fps: 10,  
+            qrbox: { width: 250, height: 150 } 
           },
           onScanSuccess,
           onScanFailure
         ).catch(err => {
-          alert("Error al acceder a la cámara. Asegúrate de otorgar permisos.");
+          alert("Error al acceder a la cámara. Asegúrate de dar permisos.");
           cerrarCamara();
           console.error(err);
         });
@@ -489,7 +490,7 @@
 
     function procesarCSVOculto(input) {
       const file = input.files; 
-      if (!file || !file) return;
+      if (!file || !file[0]) return;
 
       const reader = new FileReader();
       reader.onload = function(e) {
@@ -522,10 +523,10 @@
           columnas.push(celdaActual.trim().replace(/^"|"$/g, ''));
 
           if (columnas.length >= 4) {
-            let codigo = columnas;
-            let nombre = columnas;
-            let presentacion = columnas;
-            let precio = parseFloat(columnas);
+            let codigo = columnas[0];
+            let nombre = columnas[1];
+            let presentacion = columnas[2];
+            let precio = parseFloat(columnas[3]);
 
             if (codigo && nombre && !isNaN(precio)) {
               productosRegistrados[codigo] = { nombre: nombre, presentacion: presentacion, precio: precio };
@@ -544,7 +545,7 @@
         
         input.value = "";
       };
-      reader.readAsText(file);
+      reader.readAsText(file[0]);
     }
   </script>
 </body>
